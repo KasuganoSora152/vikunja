@@ -60,6 +60,13 @@ type adminSetPasswordBody struct {
 	NewPassword string `json:"new_password" valid:"bcrypt_password" minLength:"8" maxLength:"72" doc:"The new password. Max 72 bytes (a bcrypt limit), which may be fewer than 72 characters."`
 }
 
+// adminUserSettingsBody is both the read response and the update body, so
+// AutoPatch's GET→PUT round trip echoes the read-only user back harmlessly.
+type adminUserSettingsBody struct {
+	models.UserGeneralSettings
+	User *shared.AdminUser `json:"user" readOnly:"true" doc:"The user these settings belong to."`
+}
+
 // adminDoerFromCtx resolves the acting admin for audit attribution. The admin
 // gate guarantees the principal is a user, so anything else is a hard error.
 func adminDoerFromCtx(ctx context.Context) (*user.User, error) {
@@ -137,6 +144,24 @@ func RegisterAdminUserRoutes(api huma.API) {
 		DefaultStatus: http.StatusOK,
 		Tags:          tags,
 	}, adminUsersPasswordResetEmail)
+
+	Register(api, huma.Operation{
+		OperationID: "admin-users-settings-read",
+		Summary:     "Get a user's general settings (admin)",
+		Description: "Returns the same settings the user edits on PUT /user/settings/general, plus the user they belong to.",
+		Method:      http.MethodGet,
+		Path:        "/admin/users/{id}/settings/general",
+		Tags:        tags,
+	}, adminUsersSettingsRead)
+
+	Register(api, huma.Operation{
+		OperationID: "admin-users-settings-update",
+		Summary:     "Update a user's general settings (admin)",
+		Description: "Replaces a user's general settings with the same rules as the self-service endpoint; the default project must be one the target user can write to. Use PATCH to change only some of them; it merges into frontend_settings key by key.",
+		Method:      http.MethodPut,
+		Path:        "/admin/users/{id}/settings/general",
+		Tags:        tags,
+	}, adminUsersSettingsUpdate)
 
 	Register(api, huma.Operation{
 		OperationID: "admin-users-delete",
@@ -286,6 +311,57 @@ func adminUsersPasswordResetEmail(ctx context.Context, in *struct {
 	out := &messageBody{}
 	out.Body.Message = "A password-reset email was sent."
 	return out, nil
+}
+
+func adminUsersSettingsRead(_ context.Context, in *struct {
+	ID int64 `path:"id" doc:"The numeric ID of the user."`
+}) (*singleBody[adminUserSettingsBody], error) {
+	s := db.NewSession()
+	defer s.Close()
+
+	target, err := models.GetUserAsAdmin(s, in.ID)
+	if err != nil {
+		return nil, translateDomainError(err)
+	}
+	return newAdminUserSettingsBody(target) //nolint:contextcheck // see newAdminUserSettingsBody.
+}
+
+func adminUsersSettingsUpdate(ctx context.Context, in *struct {
+	ID   int64 `path:"id" doc:"The numeric ID of the user."`
+	Body adminUserSettingsBody
+}) (*singleBody[adminUserSettingsBody], error) {
+	doer, err := adminDoerFromCtx(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s := db.NewSession()
+	defer s.Close()
+
+	target, err := models.UpdateUserSettingsAsAdmin(s, doer, in.ID, &in.Body.UserGeneralSettings)
+	if err != nil {
+		_ = s.Rollback()
+		events.CleanupPending(s)
+		return nil, translateDomainError(err)
+	}
+	if err := s.Commit(); err != nil {
+		events.CleanupPending(s)
+		return nil, translateDomainError(err)
+	}
+	events.DispatchPending(ctx, s)
+
+	return newAdminUserSettingsBody(target) //nolint:contextcheck // see newAdminUserSettingsBody.
+}
+
+func newAdminUserSettingsBody(target *user.User) (*singleBody[adminUserSettingsBody], error) {
+	providers, err := openid.GetAllProviders() //nolint:contextcheck // GetAllProviders reads a cached map; it takes no context, like the v1 admin handlers.
+	if err != nil {
+		return nil, translateDomainError(err)
+	}
+	return &singleBody[adminUserSettingsBody]{Body: &adminUserSettingsBody{
+		UserGeneralSettings: *models.NewUserGeneralSettings(target),
+		User:                shared.NewAdminUser(target, providers), //nolint:contextcheck // OIDC provider init deliberately uses a background context — provider lifetime exceeds the request
+	}}, nil
 }
 
 func adminUsersDelete(ctx context.Context, in *struct {
