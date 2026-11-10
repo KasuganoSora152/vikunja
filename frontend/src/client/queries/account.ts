@@ -203,7 +203,7 @@ function definedEntries<T extends object>(value: T): Partial<T> {
 	return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as Partial<T>
 }
 
-function settingsMergePatch({frontend_settings: frontend, ...rest}: UserSettingsEdits): UserSettingsEdits {
+export function settingsMergePatch({frontend_settings: frontend, ...rest}: UserSettingsEdits): UserSettingsEdits {
 	const patch: UserSettingsEdits = definedEntries(rest)
 	const frontendPatch = definedEntries(frontend ?? {})
 	if (Object.keys(frontendPatch).length > 0) patch.frontend_settings = frontendPatch
