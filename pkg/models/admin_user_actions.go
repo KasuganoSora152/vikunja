@@ -147,6 +147,29 @@ func SetUserPasswordAsAdmin(s *xorm.Session, doer *user.User, id int64, newPassw
 	return target, nil
 }
 
+// UpdateUserSettingsAsAdmin applies the self-service settings update to another
+// user. The default project is still checked against the target's permissions.
+// It does not commit; the caller owns the transaction.
+func UpdateUserSettingsAsAdmin(s *xorm.Session, doer *user.User, id int64, settings *UserGeneralSettings) (*user.User, error) {
+	target, err := loadAdminTargetUser(s, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := UpdateUserGeneralSettings(s, target, settings); err != nil {
+		return nil, err
+	}
+
+	events.DispatchOnCommit(s, &AdminUserSettingsUpdatedEvent{User: target, Doer: doer})
+	// UpdateUser leaves FrontendSettings pre-marshalled as a JSON string.
+	return loadAdminTargetUser(s, id)
+}
+
+// GetUserAsAdmin loads any user by ID, including disabled and locked accounts.
+func GetUserAsAdmin(s *xorm.Session, id int64) (*user.User, error) {
+	return loadAdminTargetUser(s, id)
+}
+
 // RequestPasswordResetAsAdmin triggers the self-service password-reset email
 // for a local account. The caller must ensure the mailer is enabled —
 // RequestUserPasswordResetToken silently skips the email otherwise. It does
