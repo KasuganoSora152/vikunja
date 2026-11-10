@@ -1,0 +1,57 @@
+<template>
+	<div class="admin-user-settings">
+		<div class="admin-user-settings__header">
+			<RouterLink :to="{name: 'admin.users'}">
+				{{ $t('admin.users.backToUsers') }}
+			</RouterLink>
+			<h2 class="title is-4">
+				{{ $t('admin.users.settingsTitle', {username: data?.user?.username ?? `#${userId}`}) }}
+			</h2>
+		</div>
+
+		<p v-if="isPending">
+			{{ $t('misc.loading') }}
+		</p>
+		<!-- The form seeds its draft once, so it may only mount with the settings loaded. -->
+		<GeneralSettingsForm
+			v-else-if="data"
+			:key="userId"
+			:initial-settings="normalizeUserSettings(data)"
+			:is-external-user="!!data.user?.auth_provider"
+			:auth-provider="data.user?.auth_provider"
+			:saving="updateMutation.isPending.value"
+			:save="save"
+			:own-account="false"
+		/>
+	</div>
+</template>
+
+<script setup lang="ts">
+import {computed} from 'vue'
+import {useQuery} from '@tanstack/vue-query'
+
+import GeneralSettingsForm from '@/views/user/settings/GeneralSettingsForm.vue'
+import {normalizeUserSettings, type UserSettingsEdits} from '@/client/queries/account'
+import {adminUserSettingsQuery, useUpdateAdminUserSettingsMutation} from '@/client/queries/admin'
+
+const props = defineProps<{userId: number}>()
+
+defineOptions({name: 'AdminUserSettings'})
+
+const {data, isPending} = useQuery(computed(() => adminUserSettingsQuery(props.userId)))
+const updateMutation = useUpdateAdminUserSettingsMutation()
+
+function save(edits: UserSettingsEdits) {
+	return updateMutation.mutateAsync({id: props.userId, edits})
+}
+</script>
+
+<style lang="scss" scoped>
+.admin-user-settings__header {
+	margin-block-end: 1rem;
+
+	.title {
+		margin-block-start: .5rem;
+	}
+}
+</style>
