@@ -161,8 +161,7 @@ func UpdateUserSettingsAsAdmin(s *xorm.Session, doer *user.User, id int64, setti
 	}
 
 	events.DispatchOnCommit(s, &AdminUserSettingsUpdatedEvent{User: target, Doer: doer})
-	// UpdateUser leaves FrontendSettings pre-marshalled as a JSON string.
-	return loadAdminTargetUser(s, id)
+	return target, nil
 }
 
 // GetUserAsAdmin loads any user by ID, including disabled and locked accounts.
