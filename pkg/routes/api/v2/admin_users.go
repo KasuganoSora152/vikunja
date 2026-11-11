@@ -404,8 +404,6 @@ func adminCommitUser(ctx context.Context, action func(s *xorm.Session, doer *use
 }
 
 // adminCommitTarget runs a user-returning admin action in its own transaction.
-// The action does the load/guard/mutate against the session (shared with v1 via
-// the models layer); this owns the commit.
 func adminCommitTarget(ctx context.Context, action func(s *xorm.Session, doer *user.User) (*user.User, error)) (*user.User, error) {
 	doer, err := adminDoerFromCtx(ctx)
 	if err != nil {
