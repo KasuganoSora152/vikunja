@@ -435,7 +435,9 @@ const configStore = useConfigStore()
 const timeTrackingEnabled = computed(() => configStore.isProFeatureEnabled(PRO_FEATURE.TIME_TRACKING))
 
 // eslint-disable-next-line vue/no-setup-props-reactivity-loss -- seeded once; parents key the form
-const settings = ref(createUserSettingsDraft(props.initialSettings))
+const seed = createUserSettingsDraft(props.initialSettings)
+const savedSettings = ref(seed)
+const settings = ref(createUserSettingsDraft(seed))
 
 const quickAddDefaultReminders = computed({
 	get: () => taskRemindersFromSettings(settings.value.frontend_settings.quick_add_default_reminders),
@@ -446,9 +448,7 @@ const quickAddDefaultReminders = computed({
 	},
 })
 
-// eslint-disable-next-line vue/no-setup-props-reactivity-loss -- seeded once; parents key the form
-const initialSettings = ref(createUserSettingsDraft(props.initialSettings))
-const isDirty = computed(() => !isEqual(settings.value, initialSettings.value))
+const isDirty = computed(() => !isEqual(settings.value, savedSettings.value))
 
 function enforceBackgroundBrightnessBounds() {
 	const value = Number(settings.value.frontend_settings.background_brightness)
@@ -526,13 +526,13 @@ async function updateSettings() {
 	const submitted = createUserSettingsDraft(settings.value)
 	loading.value = true
 	try {
-		await props.save(diffUserSettings(initialSettings.value, submitted), submitted)
+		await props.save(diffUserSettings(savedSettings.value, submitted), submitted)
 	} catch {
 		return
 	} finally {
 		loading.value = false
 	}
-	initialSettings.value = submitted
+	savedSettings.value = submitted
 }
 </script>
 
