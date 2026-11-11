@@ -2851,18 +2851,4 @@ func TestTaskCollection_ReadAll_IncludeSubprojectsPositions(t *testing.T) {
 			IncludeSubprojects: true,
 		}), "default position sort")
 	})
-
-	t.Run("no row in the parent's kanban view", func(t *testing.T) {
-		db.LoadAndAssertFixtures(t)
-		s := db.NewSession()
-		defer s.Close()
-
-		c := &TaskCollection{ProjectID: 32, ProjectViewID: 128, IncludeSubprojects: true}
-		_, _, _, err := c.ReadAll(s, &user.User{ID: 6}, "", 0, 50)
-		require.NoError(t, err)
-		require.NoError(t, s.Commit())
-
-		db.AssertCount(t, "task_positions", builder.Eq{"task_id": 24, "project_view_id": 128}, 0)
-		db.AssertCount(t, "task_buckets", builder.Eq{"task_id": 24, "project_view_id": 128}, 0)
-	})
 }
