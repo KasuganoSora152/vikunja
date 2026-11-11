@@ -1836,6 +1836,7 @@
       "sendResetEmailSuccess": "A password-reset email was sent to {username}.",
       "editSettings": "Edit settings",
       "settingsTitle": "Settings of {username}",
+      "settingsEditingOther": "You are editing the settings of {username}, not your own. Changes apply to their account.",
       "backToUsers": "Back to users",
       "createdSuccess": "User {username} created.",
       "updatedSuccess": "User {username} updated.",
