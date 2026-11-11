@@ -16,7 +16,7 @@
 		<GeneralSettingsForm
 			v-else-if="data"
 			:key="userId"
-			:initial-settings="normalizeUserSettings(data)"
+			:initial-settings="data.settings"
 			:is-external-user="!!data.user?.auth_provider"
 			:auth-provider="data.user?.auth_provider"
 			:save="save"
@@ -30,7 +30,7 @@ import {computed} from 'vue'
 import {useQuery} from '@tanstack/vue-query'
 
 import GeneralSettingsForm from '@/views/user/settings/GeneralSettingsForm.vue'
-import {normalizeUserSettings, type UserSettingsEdits} from '@/client/queries/account'
+import type {UserSettingsEdits} from '@/client/queries/account'
 import {adminUserSettingsQuery, useUpdateAdminUserSettingsMutation} from '@/client/queries/admin'
 
 const props = defineProps<{userId: number}>()

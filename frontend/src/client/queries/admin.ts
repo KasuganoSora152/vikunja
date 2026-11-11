@@ -29,7 +29,7 @@ import {contextMutationOptions} from './contextMutation'
 import {useSecretMutation} from './secretMutation'
 import {PICKER_PAGE_SIZE, toPaginated} from './pagination'
 import {projectKeys} from './projects'
-import {accountKeys, sendSettingsMergePatch, type UserInfoResponse, type UserSettingsEdits} from './account'
+import {accountKeys, normalizeUserSettings, sendSettingsMergePatch, type UserInfoResponse, type UserSettingsEdits} from './account'
 import {i18n} from '@/i18n'
 
 export type DeleteUserMode = 'now' | 'scheduled'
@@ -77,7 +77,10 @@ export function adminUserSearchQuery(q: string) {
 export function adminUserSettingsQuery(id: number) {
 	return queryOptions({
 		queryKey: adminKeys.userSettings(id),
-		queryFn: async ({signal}) => (await adminUsersSettingsRead({path: {id}, signal})).data,
+		queryFn: async ({signal}) => {
+			const {data} = await adminUsersSettingsRead({path: {id}, signal})
+			return {settings: normalizeUserSettings(data), user: data.user}
+		},
 	})
 }
 
