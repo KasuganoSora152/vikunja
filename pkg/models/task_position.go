@@ -17,6 +17,7 @@
 package models
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"slices"
@@ -446,28 +447,36 @@ func RecalculateTaskPositions(s *xorm.Session, view *ProjectView, a web.Auth) (e
 	if err != nil {
 		return
 	}
-	if len(allTasks) == 0 {
-		return
-	}
 
-	maxPosition := math.Pow(2, 32)
-	newPositions := make([]*TaskPosition, 0, len(allTasks))
+	taskIDs := make([]int64, 0, len(allTasks))
 	seenTasks := make(map[int64]bool, len(allTasks))
-
-	for i, task := range allTasks {
+	for _, task := range allTasks {
 		// The search can return a task more than once, but the unique index
 		// on (task_id, project_view_id) allows only one row per task and view.
 		if seenTasks[task.ID] {
 			continue
 		}
 		seenTasks[task.ID] = true
+		taskIDs = append(taskIDs, task.ID)
+	}
 
-		currentPosition := maxPosition / float64(len(allTasks)) * (float64(i + 1))
+	if view.ProjectID > 0 {
+		taskIDs, err = addPositionedSubprojectTasks(s, view, taskIDs)
+		if err != nil {
+			return err
+		}
+	}
+	if len(taskIDs) == 0 {
+		return
+	}
 
+	maxPosition := math.Pow(2, 32)
+	newPositions := make([]*TaskPosition, 0, len(taskIDs))
+	for i, taskID := range taskIDs {
 		newPositions = append(newPositions, &TaskPosition{
-			TaskID:        task.ID,
+			TaskID:        taskID,
 			ProjectViewID: view.ID,
-			Position:      currentPosition,
+			Position:      maxPosition / float64(len(taskIDs)) * float64(i+1),
 		})
 	}
 
@@ -483,12 +492,65 @@ func RecalculateTaskPositions(s *xorm.Session, view *ProjectView, a web.Auth) (e
 		return
 	}
 
-	log.Debugf("Inserted %d new positions for %d total tasks in view %d", len(newPositions), len(allTasks), view.ID)
+	log.Debugf("Inserted %d new positions in view %d", len(newPositions), view.ID)
 
 	events.DispatchOnCommit(s, &TaskPositionsRecalculatedEvent{
 		NewTaskPositions: newPositions,
 	})
 	return nil
+}
+
+// addPositionedSubprojectTasks merges the descendant projects' tasks which already have a row
+// in view into the project's own, ordered like the search: by position, unpositioned last, then
+// by id. Those rows come from include_subprojects, which may be a request parameter, so a
+// recalculation can only tell them apart by the row. Archived or inaccessible descendants are
+// kept too, so their order survives until they show up again.
+func addPositionedSubprojectTasks(s *xorm.Session, view *ProjectView, ownTaskIDs []int64) ([]int64, error) {
+	subprojectTaskIDs := []int64{}
+	err := s.
+		Table("task_positions").
+		Join("INNER", "tasks", "tasks.id = task_positions.task_id").
+		Join("INNER", "project_ancestors", "project_ancestors.project_id = tasks.project_id").
+		Where(builder.And(
+			builder.Eq{"task_positions.project_view_id": view.ID},
+			builder.Eq{"project_ancestors.ancestor_id": view.ProjectID},
+			builder.Gt{"project_ancestors.depth": 0},
+			taskNotDeletedCond("tasks"),
+		)).
+		Cols("task_positions.task_id").
+		Find(&subprojectTaskIDs)
+	if err != nil || len(subprojectTaskIDs) == 0 {
+		return ownTaskIDs, err
+	}
+
+	existing, err := getPositionsForView(s, view)
+	if err != nil {
+		return nil, err
+	}
+	positionByTask := make(map[int64]float64, len(existing))
+	for _, p := range existing {
+		positionByTask[p.TaskID] = p.Position
+	}
+
+	taskIDs := append(slices.Clone(ownTaskIDs), subprojectTaskIDs...)
+	slices.SortStableFunc(taskIDs, func(a, b int64) int {
+		posA, hasA := positionByTask[a]
+		posB, hasB := positionByTask[b]
+		switch {
+		case hasA != hasB:
+			if hasA {
+				return -1
+			}
+			return 1
+		case hasA && posA != posB:
+			if posA < posB {
+				return -1
+			}
+			return 1
+		}
+		return cmp.Compare(a, b)
+	})
+	return taskIDs, nil
 }
 
 func getPositionsForView(s *xorm.Session, view *ProjectView) (positions []*TaskPosition, err error) {
