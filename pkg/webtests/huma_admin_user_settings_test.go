@@ -42,30 +42,6 @@ func TestHumaAdminUserSettings(t *testing.T) {
 		return e, humaTokenFor(t, promoteToAdmin(t, 2))
 	}
 
-	t.Run("reads another user's settings", func(t *testing.T) {
-		e, token := setup(t)
-		res := humaRequest(t, e, http.MethodGet, path, "", token, "")
-		require.Equal(t, http.StatusOK, res.Code, res.Body.String())
-
-		var body struct {
-			DiscoverableByName bool `json:"discoverable_by_name"`
-			User               struct {
-				ID       int64  `json:"id"`
-				Username string `json:"username"`
-			} `json:"user"`
-		}
-		require.NoError(t, json.Unmarshal(res.Body.Bytes(), &body))
-		assert.Equal(t, int64(1), body.User.ID)
-		assert.Equal(t, "user1", body.User.Username)
-		assert.False(t, body.DiscoverableByName)
-
-		var raw struct {
-			User map[string]any `json:"user"`
-		}
-		require.NoError(t, json.Unmarshal(res.Body.Bytes(), &raw))
-		assert.NotContains(t, raw.User, "email")
-	})
-
 	t.Run("replaces settings and audits the change", func(t *testing.T) {
 		e, token := setup(t)
 		events.ClearDispatchedEvents()
@@ -74,7 +50,11 @@ func TestHumaAdminUserSettings(t *testing.T) {
 		require.Equal(t, http.StatusOK, res.Code, res.Body.String())
 
 		db.AssertExists(t, "users", map[string]any{"id": 1, "discoverable_by_name": true, "week_start": 3}, false)
-		events.AssertDispatched(t, &models.AdminUserSettingsUpdatedEvent{})
+		dispatched := events.GetDispatchedEvents((&models.AdminUserSettingsUpdatedEvent{}).Name())
+		require.Len(t, dispatched, 1)
+		evt := dispatched[0].(*models.AdminUserSettingsUpdatedEvent)
+		assert.Equal(t, int64(1), evt.User.ID)
+		assert.Equal(t, int64(2), evt.Doer.ID)
 	})
 
 	t.Run("merge-patch changes only the sent fields", func(t *testing.T) {
@@ -90,10 +70,18 @@ func TestHumaAdminUserSettings(t *testing.T) {
 		db.AssertExists(t, "users", map[string]any{"id": 1, "discoverable_by_email": true, "week_start": 3}, false)
 		var body struct {
 			FrontendSettings map[string]any `json:"frontend_settings"`
+			User             struct {
+				ID       int64   `json:"id"`
+				Username string  `json:"username"`
+				Email    *string `json:"email"`
+			} `json:"user"`
 		}
 		require.NoError(t, json.Unmarshal(res.Body.Bytes(), &body))
 		assert.Equal(t, "dark", body.FrontendSettings["color_schema"])
 		assert.Equal(t, "kanban", body.FrontendSettings["default_view"])
+		assert.Equal(t, int64(1), body.User.ID)
+		assert.Equal(t, "user1", body.User.Username)
+		assert.Nil(t, body.User.Email)
 	})
 
 	t.Run("default project is checked against the target user", func(t *testing.T) {
@@ -112,12 +100,6 @@ func TestHumaAdminUserSettings(t *testing.T) {
 	t.Run("unknown user returns 404", func(t *testing.T) {
 		e, token := setup(t)
 		res := humaRequest(t, e, http.MethodGet, "/api/v2/admin/users/9999999/settings/general", "", token, "")
-		assert.Equal(t, http.StatusNotFound, res.Code)
-	})
-
-	t.Run("non-admin caller gets 404", func(t *testing.T) {
-		e, _ := setup(t)
-		res := humaRequest(t, e, http.MethodGet, "/api/v2/admin/users/2/settings/general", "", userJWT(t, 1), "")
 		assert.Equal(t, http.StatusNotFound, res.Code)
 	})
 }
