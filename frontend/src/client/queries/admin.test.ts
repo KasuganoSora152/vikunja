@@ -199,7 +199,7 @@ it('does not refetch the acting admin account when another user is updated', asy
 })
 it('admin settings update stales the cached settings and account', async () => {
 	const client = new QueryClient()
-	client.setQueryData(adminKeys.userSettings(5), {discoverable_by_name: false})
+	client.setQueryData(adminKeys.userSettings(5), {settings: {}, user: {id: 5}})
 	client.setQueryData(accountKeys.user(5), {id: 5})
 	sdk.patchAdminUsersSettingsRead.mockResolvedValue({data: {}})
 	await client.getMutationCache().build(client, updateAdminUserSettingsMutationOptions())
