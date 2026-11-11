@@ -7,7 +7,7 @@ import {TaskBucketFactory} from '../../factories/task_buckets'
 import {SavedFilterFactory} from '../../factories/saved_filter'
 import {UserFactory} from '../../factories/user'
 import {UserProjectFactory} from '../../factories/users_project'
-import {Factory} from '../../support/factory'
+import {TaskPositionFactory} from '../../factories/task_positions'
 
 async function createProjectsWithTasks() {
 	// Create two projects
@@ -119,7 +119,7 @@ test.describe('Drag Task to Project in Sidebar', () => {
 				title: i => `Parent task ${i}`,
 				project_id: parent.id,
 			}, false)
-			await Factory.seed('task_positions', [
+			await TaskPositionFactory.seed(TaskPositionFactory.table, [
 				{task_id: 2, project_view_id: parentList.id, position: 100},
 				{task_id: 3, project_view_id: parentList.id, position: 200},
 				{task_id: task.id, project_view_id: 2, position: 1000},
