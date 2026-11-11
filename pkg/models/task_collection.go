@@ -249,8 +249,7 @@ func getTaskOrTasksInBuckets(s *xorm.Session, a web.Auth, projects []*Project, v
 	return getTasksForProjects(s, projects, a, opts, view)
 }
 
-// projectsToHealInView returns the projects whose tasks get no row in view on creation: every
-// project of a saved filter, and the subprojects included through include_subprojects.
+// projectsToHealInView returns the projects whose tasks get no row in view on creation.
 func projectsToHealInView(projects []*Project, view *ProjectView) []*Project {
 	if GetSavedFilterIDFromProjectID(view.ProjectID) > 0 {
 		return projects

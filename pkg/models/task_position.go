@@ -509,11 +509,7 @@ func RecalculateTaskPositions(s *xorm.Session, view *ProjectView, a web.Auth) (e
 	return nil
 }
 
-// addPositionedSubprojectTasks merges the descendant projects' tasks which already have a row
-// in view into the project's own, ordered like the search: by position, unpositioned last, then
-// by id. Those rows come from include_subprojects, which may be a request parameter, so a
-// recalculation can only tell them apart by the row. Archived or inaccessible descendants are
-// kept too, so their order survives until they show up again.
+// addPositionedSubprojectTasks finds subproject tasks by their existing row in view, since include_subprojects may be a request param.
 func addPositionedSubprojectTasks(s *xorm.Session, view *ProjectView, ownTaskIDs []int64) ([]int64, error) {
 	subprojectTaskIDs := []int64{}
 	err := s.

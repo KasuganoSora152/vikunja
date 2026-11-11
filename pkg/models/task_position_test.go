@@ -823,9 +823,7 @@ func TestAddPositionsToTasks(t *testing.T) {
 	})
 }
 
-// Project 32 (owned by user 6, read-only for user 1 via team 1) has task 21 and
-// the child project 15 with task 24. View 125 is 32's list view, 128 its kanban
-// view, 57 is 15's list view and 129 is the list view of the unrelated project 33.
+// Project 32 (task 21, views list 125 / kanban 128) is the parent of 15 (task 24, list view 57).
 func TestTaskPosition_CanUpdate_Subprojects(t *testing.T) {
 	canUpdate := func(t *testing.T, u *user.User, taskID, viewID int64) bool {
 		db.LoadAndAssertFixtures(t)
