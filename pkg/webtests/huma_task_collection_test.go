@@ -64,6 +64,24 @@ func TestHumaTaskCollection(t *testing.T) {
 			assert.Contains(t, rec.Body.String(), `task #21`)
 			assert.Contains(t, rec.Body.String(), `task #24`)
 		})
+		t.Run("subproject tasks get a position in the requested view", func(t *testing.T) {
+			rec := get("/api/v2/projects/32/views/125/tasks?include_subprojects=true&sort_by=position")
+			require.Equal(t, http.StatusOK, rec.Code, "body: %s", rec.Body.String())
+			var body struct {
+				Items []struct {
+					ID       int64   `json:"id"`
+					Position float64 `json:"position"`
+				} `json:"items"`
+			}
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+			for _, task := range body.Items {
+				if task.ID == 24 {
+					assert.NotZero(t, task.Position, "task #24 must carry its position in view 125")
+					return
+				}
+			}
+			t.Fatalf("task #24 missing from the response: %s", rec.Body.String())
+		})
 		t.Run("ignored for a kanban view", func(t *testing.T) {
 			rec := get("/api/v2/projects/32/views/128/buckets/tasks?include_subprojects=true")
 			require.Equal(t, http.StatusOK, rec.Code, "body: %s", rec.Body.String())
