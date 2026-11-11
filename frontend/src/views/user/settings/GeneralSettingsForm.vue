@@ -350,7 +350,6 @@ const props = defineProps<{
 	initialSettings: DeepReadonly<UserSettings>
 	isExternalUser: boolean
 	authProvider?: string
-	saving: boolean
 	save: (edits: UserSettingsEdits, submitted: UserSettings) => Promise<unknown>
 	// False when an admin edits someone else: hides fields tied to the editor's projects or device.
 	ownAccount: boolean
@@ -520,15 +519,18 @@ const filterUsedInOverview = computed({
 	},
 })
 const hasFilters = computed(() => projectList.projectsArray.some(isSavedFilterProject))
-const loading = computed(() => props.saving)
+const loading = ref(false)
 
 async function updateSettings() {
 	if (loading.value) return
 	const submitted = createUserSettingsDraft(settings.value)
+	loading.value = true
 	try {
 		await props.save(diffUserSettings(initialSettings.value, submitted), submitted)
 	} catch {
 		return
+	} finally {
+		loading.value = false
 	}
 	initialSettings.value = submitted
 }

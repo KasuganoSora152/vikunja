@@ -19,7 +19,6 @@
 			:initial-settings="normalizeUserSettings(data)"
 			:is-external-user="!!data.user?.auth_provider"
 			:auth-provider="data.user?.auth_provider"
-			:saving="updateMutation.isPending.value"
 			:save="save"
 			:own-account="false"
 		/>

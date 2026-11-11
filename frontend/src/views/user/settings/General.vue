@@ -6,7 +6,6 @@
 		:initial-settings="authStore.settings"
 		:is-external-user="authStore.info?.is_local_user === false"
 		:auth-provider="authStore.info?.auth_provider"
-		:saving="updateUserSettings.isPending.value"
 		:save="save"
 		own-account
 	/>
