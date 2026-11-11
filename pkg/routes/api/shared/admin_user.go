@@ -46,6 +46,7 @@ func NewAdminUser(u *user.User, providers []*openid.Provider) *AdminUser {
 	}
 }
 
+// ResolveAuthProvider returns the provider name shown to admins: "" for local accounts, "LDAP" for LDAP, the issuer if no provider matches.
 func ResolveAuthProvider(u *user.User, providers []*openid.Provider) string {
 	switch u.Issuer {
 	case "", user.IssuerLocal:
