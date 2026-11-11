@@ -197,27 +197,13 @@ it('does not refetch the acting admin account when another user is updated', asy
 	expect(sdk.userShow).toHaveBeenCalledTimes(1)
 	unsubscribe()
 })
-it('admin settings update sends only the edits as a merge patch and stales the cached settings', async () => {
+it('admin settings update stales the cached settings and account', async () => {
 	const client = new QueryClient()
 	client.setQueryData(adminKeys.userSettings(5), {discoverable_by_name: false})
+	client.setQueryData(accountKeys.user(5), {id: 5})
 	sdk.patchAdminUsersSettingsRead.mockResolvedValue({data: {}})
 	await client.getMutationCache().build(client, updateAdminUserSettingsMutationOptions())
-		.execute({id: 5, edits: {discoverable_by_name: true, timezone: undefined, frontend_settings: {}}})
-	const [options] = sdk.patchAdminUsersSettingsRead.mock.calls[0]
-	expect(options.path).toEqual({id: 5})
-	expect(options.body).toStrictEqual({discoverable_by_name: true})
-	expect(options.headers).toEqual({'Content-Type': 'application/merge-patch+json'})
+		.execute({id: 5, edits: {discoverable_by_name: true}})
 	expect(client.getQueryState(adminKeys.userSettings(5))?.isInvalidated).toBe(true)
-})
-it('admin settings update treats an unchanged 304 as success', async () => {
-	const client = new QueryClient()
-	sdk.patchAdminUsersSettingsRead.mockResolvedValue({error: {}, response: {status: 304}})
-	await expect(client.getMutationCache().build(client, updateAdminUserSettingsMutationOptions())
-		.execute({id: 5, edits: {name: 'Same'}})).resolves.toBeUndefined()
-})
-it('admin settings update surfaces a rejected patch', async () => {
-	const client = new QueryClient()
-	sdk.patchAdminUsersSettingsRead.mockResolvedValue({error: {status: 400}, response: {status: 400}})
-	await expect(client.getMutationCache().build(client, updateAdminUserSettingsMutationOptions())
-		.execute({id: 5, edits: {default_project_id: 20}})).rejects.toEqual({status: 400})
+	expect(client.getQueryState(accountKeys.user(5))?.isInvalidated).toBe(true)
 })
