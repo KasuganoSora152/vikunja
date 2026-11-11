@@ -823,6 +823,53 @@ func TestAddPositionsToTasks(t *testing.T) {
 	})
 }
 
+// Project 32 (owned by user 6, read-only for user 1 via team 1) has task 21 and
+// the child project 15 with task 24. View 125 is 32's list view, 128 its kanban
+// view, 57 is 15's list view and 129 is the list view of the unrelated project 33.
+func TestTaskPosition_CanUpdate_Subprojects(t *testing.T) {
+	canUpdate := func(t *testing.T, u *user.User, taskID, viewID int64) bool {
+		db.LoadAndAssertFixtures(t)
+		s := db.NewSession()
+		defer s.Close()
+
+		can, err := (&TaskPosition{TaskID: taskID, ProjectViewID: viewID, Position: 10}).CanUpdate(s, u)
+		require.NoError(t, err)
+		return can
+	}
+
+	t.Run("subproject task in the parent's list view", func(t *testing.T) {
+		assert.True(t, canUpdate(t, &user.User{ID: 6}, 24, 125))
+	})
+	t.Run("without update permission on the task", func(t *testing.T) {
+		assert.False(t, canUpdate(t, &user.User{ID: 1}, 24, 125))
+	})
+	t.Run("in an unrelated project's view", func(t *testing.T) {
+		assert.False(t, canUpdate(t, &user.User{ID: 6}, 24, 129))
+	})
+	t.Run("parent task in the child's view", func(t *testing.T) {
+		assert.False(t, canUpdate(t, &user.User{ID: 6}, 21, 57))
+	})
+	t.Run("subproject task in the parent's kanban view", func(t *testing.T) {
+		assert.False(t, canUpdate(t, &user.User{ID: 6}, 24, 128))
+	})
+}
+
+func TestTaskPosition_Update_SubprojectTaskInParentView(t *testing.T) {
+	db.LoadAndAssertFixtures(t)
+	s := db.NewSession()
+	defer s.Close()
+
+	_, err := s.Insert(&TaskPosition{TaskID: 24, ProjectViewID: 57, Position: 777})
+	require.NoError(t, err)
+
+	tp := &TaskPosition{TaskID: 24, ProjectViewID: 125, Position: 250}
+	require.NoError(t, tp.Update(s, &user.User{ID: 6}))
+	require.NoError(t, s.Commit())
+
+	db.AssertExists(t, "task_positions", map[string]interface{}{"task_id": 24, "project_view_id": 125, "position": 250}, false)
+	db.AssertExists(t, "task_positions", map[string]interface{}{"task_id": 24, "project_view_id": 57, "position": 777}, false)
+}
+
 func TestRecalculateTaskPositions_KeepsSubprojectTasks(t *testing.T) {
 	db.LoadAndAssertFixtures(t)
 	s := db.NewSession()
