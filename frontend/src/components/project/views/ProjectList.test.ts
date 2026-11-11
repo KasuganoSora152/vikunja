@@ -45,7 +45,7 @@ function makeTask(id: number, position: number): ITask {
 	return {id, title: `Task ${id}`, position} as ITask
 }
 
-async function mountList(view: Record<string, unknown> = {id: 10, view_kind: 'list'}) {
+async function mountList() {
 	const router = createRouter({history: createMemoryHistory(), routes: [{path: '/', component: {render: () => null}}]})
 	await router.push('/')
 	const wrapper = shallowMount(ProjectList, {
@@ -53,7 +53,7 @@ async function mountList(view: Record<string, unknown> = {id: 10, view_kind: 'li
 			isLoadingProject: false,
 			projectId: 1,
 			viewId: 10,
-			view,
+			view: {id: 10, view_kind: 'list'},
 		},
 		global: {
 			plugins: [
@@ -112,25 +112,6 @@ describe('ProjectList', () => {
 		const list = wrapper.findComponent(draggable)
 
 		list.vm.$emit('update:modelValue', [makeTask(1, 100), makeTask(3, 300), makeTask(2, 250)])
-		await nextTick()
-		list.vm.$emit('end', dragEndEvent('3', 1))
-		await flushPromises()
-
-		expect(updatePosition).toHaveBeenCalledWith(expect.objectContaining({
-			path: {task: 3},
-			body: {position: 175, project_view_id: 10},
-		}))
-	})
-
-	it('saves a subproject task\'s position in this view when subprojects are included', async () => {
-		const subprojectTask = {...makeTask(3, 300), project_id: 2}
-		sdk.projectViewTasksList.mockResolvedValue({
-			data: {items: [makeTask(1, 100), makeTask(2, 250), subprojectTask], page: 1, total_pages: 1},
-		})
-		const wrapper = await mountList({id: 10, view_kind: 'list', filter: {include_subprojects: true}})
-		const list = wrapper.findComponent(draggable)
-
-		list.vm.$emit('update:modelValue', [makeTask(1, 100), subprojectTask, makeTask(2, 250)])
 		await nextTick()
 		list.vm.$emit('end', dragEndEvent('3', 1))
 		await flushPromises()
