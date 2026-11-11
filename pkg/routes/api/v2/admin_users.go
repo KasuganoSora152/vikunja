@@ -336,26 +336,12 @@ func adminUsersSettingsUpdate(ctx context.Context, in *struct {
 	ID   int64 `path:"id" doc:"The numeric ID of the user."`
 	Body adminUserSettingsBody
 }) (*singleBody[adminUserSettingsBody], error) {
-	doer, err := adminDoerFromCtx(ctx)
+	target, err := adminCommitTarget(ctx, func(s *xorm.Session, doer *user.User) (*user.User, error) {
+		return models.UpdateUserSettingsAsAdmin(s, doer, in.ID, &in.Body.UserGeneralSettings)
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	s := db.NewSession()
-	defer s.Close()
-
-	target, err := models.UpdateUserSettingsAsAdmin(s, doer, in.ID, &in.Body.UserGeneralSettings)
-	if err != nil {
-		_ = s.Rollback()
-		events.CleanupPending(s)
-		return nil, translateDomainError(err)
-	}
-	if err := s.Commit(); err != nil {
-		events.CleanupPending(s)
-		return nil, translateDomainError(err)
-	}
-	events.DispatchPending(ctx, s)
-
 	return newAdminUserSettingsBody(target) //nolint:contextcheck // see newAdminUserSettingsBody.
 }
 
@@ -406,10 +392,23 @@ func adminUsersDelete(ctx context.Context, in *struct {
 	return &emptyBody{}, nil
 }
 
-// adminCommitUser runs a user-returning admin action in its own transaction and
-// renders the admin user view. The action does the load/guard/mutate against the
-// session (shared with v1 via the models layer); this owns the commit and response.
 func adminCommitUser(ctx context.Context, action func(s *xorm.Session, doer *user.User) (*user.User, error)) (*adminUserBody, error) {
+	target, err := adminCommitTarget(ctx, action)
+	if err != nil {
+		return nil, err
+	}
+
+	providers, err := openid.GetAllProviders() //nolint:contextcheck // GetAllProviders reads a cached map; it takes no context, like the v1 admin handlers.
+	if err != nil {
+		return nil, translateDomainError(err)
+	}
+	return &adminUserBody{Body: shared.NewAdminUser(target, providers)}, nil //nolint:contextcheck // OIDC provider init deliberately uses a background context — provider lifetime exceeds the request
+}
+
+// adminCommitTarget runs a user-returning admin action in its own transaction.
+// The action does the load/guard/mutate against the session (shared with v1 via
+// the models layer); this owns the commit.
+func adminCommitTarget(ctx context.Context, action func(s *xorm.Session, doer *user.User) (*user.User, error)) (*user.User, error) {
 	doer, err := adminDoerFromCtx(ctx)
 	if err != nil {
 		return nil, err
@@ -429,10 +428,5 @@ func adminCommitUser(ctx context.Context, action func(s *xorm.Session, doer *use
 		return nil, translateDomainError(err)
 	}
 	events.DispatchPending(ctx, s)
-
-	providers, err := openid.GetAllProviders() //nolint:contextcheck // GetAllProviders reads a cached map; it takes no context, like the v1 admin handlers.
-	if err != nil {
-		return nil, translateDomainError(err)
-	}
-	return &adminUserBody{Body: shared.NewAdminUser(target, providers)}, nil //nolint:contextcheck // OIDC provider init deliberately uses a background context — provider lifetime exceeds the request
+	return target, nil
 }
