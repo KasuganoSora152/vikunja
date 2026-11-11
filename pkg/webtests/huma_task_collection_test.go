@@ -22,6 +22,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"code.vikunja.io/api/pkg/db"
+	"code.vikunja.io/api/pkg/models"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,9 +77,17 @@ func TestHumaTaskCollection(t *testing.T) {
 				} `json:"items"`
 			}
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+
+			s := db.NewSession()
+			defer s.Close()
+			stored := &models.TaskPosition{}
+			has, err := s.Where("task_id = ? AND project_view_id = ?", 24, 125).Get(stored)
+			require.NoError(t, err)
+			require.True(t, has, "task #24 must have a position row in view 125")
+
 			for _, task := range body.Items {
 				if task.ID == 24 {
-					assert.NotZero(t, task.Position, "task #24 must carry its position in view 125")
+					assert.InDelta(t, stored.Position, task.Position, 0, "task #24 must carry its stored position in view 125")
 					return
 				}
 			}
