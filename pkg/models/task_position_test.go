@@ -898,3 +898,22 @@ func TestRecalculateTaskPositions_KeepsSubprojectTasks(t *testing.T) {
 
 	db.AssertExists(t, "task_positions", map[string]interface{}{"task_id": 24, "project_view_id": 57, "position": 777}, false)
 }
+
+func TestTaskPosition_CanUpdate_SubprojectTaskWithoutParentAccess(t *testing.T) {
+	db.LoadAndAssertFixtures(t)
+	s := db.NewSession()
+	defer s.Close()
+
+	// User 3 gets write on child project 15 but has no access to its parent 32.
+	_, err := s.Insert(&ProjectUser{UserID: 3, ProjectID: 15, Permission: PermissionWrite})
+	require.NoError(t, err)
+	u := &user.User{ID: 3}
+
+	canUpdateTask, err := (&Task{ID: 24}).CanUpdate(s, u)
+	require.NoError(t, err)
+	assert.True(t, canUpdateTask)
+
+	canUpdatePosition, err := (&TaskPosition{TaskID: 24, ProjectViewID: 125, Position: 10}).CanUpdate(s, u)
+	require.NoError(t, err)
+	assert.False(t, canUpdatePosition)
+}
