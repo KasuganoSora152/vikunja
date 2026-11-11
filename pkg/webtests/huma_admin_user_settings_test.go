@@ -58,6 +58,12 @@ func TestHumaAdminUserSettings(t *testing.T) {
 		assert.Equal(t, int64(1), body.User.ID)
 		assert.Equal(t, "user1", body.User.Username)
 		assert.False(t, body.DiscoverableByName)
+
+		var raw struct {
+			User map[string]any `json:"user"`
+		}
+		require.NoError(t, json.Unmarshal(res.Body.Bytes(), &raw))
+		assert.NotContains(t, raw.User, "email")
 	})
 
 	t.Run("replaces settings and audits the change", func(t *testing.T) {

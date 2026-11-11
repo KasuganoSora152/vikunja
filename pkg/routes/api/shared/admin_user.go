@@ -42,11 +42,11 @@ func NewAdminUser(u *user.User, providers []*openid.Provider) *AdminUser {
 		Status:       u.Status,
 		Issuer:       u.Issuer,
 		Subject:      u.Subject,
-		AuthProvider: resolveAuthProvider(u, providers),
+		AuthProvider: ResolveAuthProvider(u, providers),
 	}
 }
 
-func resolveAuthProvider(u *user.User, providers []*openid.Provider) string {
+func ResolveAuthProvider(u *user.User, providers []*openid.Provider) string {
 	switch u.Issuer {
 	case "", user.IssuerLocal:
 		return ""

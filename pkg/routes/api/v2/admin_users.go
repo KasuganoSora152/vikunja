@@ -64,7 +64,13 @@ type adminSetPasswordBody struct {
 // AutoPatch's GET→PUT round trip echoes the read-only user back harmlessly.
 type adminUserSettingsBody struct {
 	models.UserGeneralSettings
-	User *shared.AdminUser `json:"user" readOnly:"true" doc:"The user these settings belong to."`
+	User *adminSettingsUser `json:"user" valid:"-" readOnly:"true" doc:"The user these settings belong to."`
+}
+
+type adminSettingsUser struct {
+	ID           int64  `json:"id" readOnly:"true" doc:"The numeric ID of the user."`
+	Username     string `json:"username" readOnly:"true" doc:"The user's username."`
+	AuthProvider string `json:"auth_provider,omitempty" readOnly:"true" doc:"Resolved auth provider name (e.g. 'LDAP' or an OIDC provider), empty for local accounts."`
 }
 
 // adminDoerFromCtx resolves the acting admin for audit attribution. The admin
@@ -360,7 +366,11 @@ func newAdminUserSettingsBody(target *user.User) (*singleBody[adminUserSettingsB
 	}
 	return &singleBody[adminUserSettingsBody]{Body: &adminUserSettingsBody{
 		UserGeneralSettings: *models.NewUserGeneralSettings(target),
-		User:                shared.NewAdminUser(target, providers), //nolint:contextcheck // OIDC provider init deliberately uses a background context — provider lifetime exceeds the request
+		User: &adminSettingsUser{
+			ID:           target.ID,
+			Username:     target.Username,
+			AuthProvider: shared.ResolveAuthProvider(target, providers), //nolint:contextcheck // OIDC provider init deliberately uses a background context — provider lifetime exceeds the request
+		},
 	}}, nil
 }
 

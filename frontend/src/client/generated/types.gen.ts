@@ -74,6 +74,21 @@ export type AdminSetPasswordBody = {
     new_password?: string;
 };
 
+export type AdminSettingsUser = {
+    /**
+     * Resolved auth provider name (e.g. 'LDAP' or an OIDC provider), empty for local accounts.
+     */
+    readonly auth_provider?: string;
+    /**
+     * The numeric ID of the user.
+     */
+    readonly id?: number;
+    /**
+     * The user's username.
+     */
+    readonly username?: string;
+};
+
 export type AdminStatusPatchBody = {
     /**
      * A URL to the JSON Schema for this object.
@@ -198,7 +213,7 @@ export type AdminUserSettingsBody = {
     /**
      * The user these settings belong to.
      */
-    readonly user?: AdminUser;
+    readonly user?: AdminSettingsUser;
     /**
      * The day the week starts on: 0=sunday, 1=monday, … 6=saturday.
      */
