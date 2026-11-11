@@ -146,9 +146,8 @@ func SetUserPasswordAsAdmin(s *xorm.Session, doer *user.User, id int64, newPassw
 	return target, nil
 }
 
-// UpdateUserSettingsAsAdmin applies the self-service settings update to another
-// user. The default project is still checked against the target's permissions.
-// It does not commit; the caller owns the transaction.
+// UpdateUserSettingsAsAdmin checks the default project against the target
+// user's permissions, not the admin's.
 func UpdateUserSettingsAsAdmin(s *xorm.Session, doer *user.User, id int64, settings *UserGeneralSettings) (*user.User, error) {
 	target, err := GetUserAsAdmin(s, id)
 	if err != nil {

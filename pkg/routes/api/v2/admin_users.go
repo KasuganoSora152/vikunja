@@ -60,8 +60,6 @@ type adminSetPasswordBody struct {
 	NewPassword string `json:"new_password" valid:"bcrypt_password" minLength:"8" maxLength:"72" doc:"The new password. Max 72 bytes (a bcrypt limit), which may be fewer than 72 characters."`
 }
 
-// adminUserSettingsBody is both the read response and the update body, so
-// AutoPatch's GET→PUT round trip echoes the read-only user back harmlessly.
 type adminUserSettingsBody struct {
 	models.UserGeneralSettings
 	User *adminSettingsUser `json:"user" valid:"-" readOnly:"true" doc:"The user these settings belong to."`
@@ -329,7 +327,7 @@ func adminUsersSettingsRead(_ context.Context, in *struct {
 	if err != nil {
 		return nil, translateDomainError(err)
 	}
-	return newAdminUserSettingsBody(target) //nolint:contextcheck // see newAdminUserSettingsBody.
+	return newAdminUserSettingsBody(target) //nolint:contextcheck
 }
 
 func adminUsersSettingsUpdate(ctx context.Context, in *struct {
@@ -342,7 +340,7 @@ func adminUsersSettingsUpdate(ctx context.Context, in *struct {
 	if err != nil {
 		return nil, err
 	}
-	return newAdminUserSettingsBody(target) //nolint:contextcheck // see newAdminUserSettingsBody.
+	return newAdminUserSettingsBody(target) //nolint:contextcheck
 }
 
 func newAdminUserSettingsBody(target *user.User) (*singleBody[adminUserSettingsBody], error) {
