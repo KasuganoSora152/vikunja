@@ -23,14 +23,13 @@ import type {
 	PaginatedAdminUser,
 	CreateUserBodyWritable,
 	CreateInviteLinkBodyWritable,
-	JsonPatchOp,
 } from '@/client/generated'
 import {captureClientRequestContext, assertClientRequestContext} from '@/client/requestContext'
 import {contextMutationOptions} from './contextMutation'
 import {useSecretMutation} from './secretMutation'
 import {PICKER_PAGE_SIZE, toPaginated} from './pagination'
 import {projectKeys} from './projects'
-import {accountKeys, settingsMergePatch, type UserInfoResponse, type UserSettingsEdits} from './account'
+import {accountKeys, sendSettingsMergePatch, type UserInfoResponse, type UserSettingsEdits} from './account'
 import {i18n} from '@/i18n'
 
 export type DeleteUserMode = 'now' | 'scheduled'
@@ -170,15 +169,7 @@ export function setAdminUserPasswordMutationOptions() {
 export function updateAdminUserSettingsMutationOptions() {
 	return contextMutationOptions({
 		mutationFn: async ({id, edits}: {id: number, edits: UserSettingsEdits}) => {
-			const {error: patchError, response} = await patchAdminUsersSettingsRead({
-				path: {id},
-				// Typed as JSON Patch only, which cannot add a key below a null frontend_settings.
-				body: settingsMergePatch(edits) as unknown as JsonPatchOp[],
-				headers: {'Content-Type': 'application/merge-patch+json'},
-				throwOnError: false,
-			})
-			// A patch that changes nothing gets an empty 304.
-			if (patchError !== undefined && response?.status !== 304) throw patchError
+			await sendSettingsMergePatch(edits, request => patchAdminUsersSettingsRead({...request, path: {id}}))
 		},
 		onSettled: ({id}, client) => Promise.all([
 			client.invalidateQueries({queryKey: adminKeys.userSettings(id)}),
