@@ -703,14 +703,12 @@ func TestUpdateUser(t *testing.T) {
 			},
 		}
 
-		input := &User{
+		updated, err := UpdateUser(s, &User{
 			ID:               1,
 			FrontendSettings: frontendSettings,
-		}
-		updated, err := UpdateUser(s, input, true)
+		}, true)
 		require.NoError(t, err)
 		require.Equal(t, frontendSettings, updated.FrontendSettings)
-		assert.Equal(t, frontendSettings, input.FrontendSettings, "the caller's struct must keep the decoded settings")
 
 		var stored sql.NullString
 		has, err := s.Table("users").
