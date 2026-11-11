@@ -2592,7 +2592,7 @@ export type TaskPosition = {
      */
     position?: number;
     /**
-     * The id of the project view this position applies to. Positions are stored per view, so the same task has an independent position in each of its project's views.
+     * The id of the project view this position applies to. Positions are stored per view, so the same task has an independent position in each of its project's views. A view of an ancestor project (except kanban) is accepted too, for tasks listed there through include_subprojects.
      */
     project_view_id?: number;
     /**
@@ -5150,7 +5150,7 @@ export type TaskPositionWritable = {
      */
     position?: number;
     /**
-     * The id of the project view this position applies to. Positions are stored per view, so the same task has an independent position in each of its project's views.
+     * The id of the project view this position applies to. Positions are stored per view, so the same task has an independent position in each of its project's views. A view of an ancestor project (except kanban) is accepted too, for tasks listed there through include_subprojects.
      */
     project_view_id?: number;
 };
@@ -8457,7 +8457,7 @@ export type ProjectTasksListData = {
          */
         filter_include_nulls?: boolean;
         /**
-         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. A sort by position is ignored while this is set, as positions are scoped to a single view.
+         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. Their position in this view is stored separately from the one in their own project's views.
          */
         include_subprojects?: boolean;
         /**
@@ -9211,7 +9211,7 @@ export type ProjectViewBucketsTasksListData = {
          */
         filter_include_nulls?: boolean;
         /**
-         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. A sort by position is ignored while this is set, as positions are scoped to a single view.
+         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. Their position in this view is stored separately from the one in their own project's views.
          */
         include_subprojects?: boolean;
         /**
@@ -9377,7 +9377,7 @@ export type ProjectViewTasksListData = {
          */
         filter_include_nulls?: boolean;
         /**
-         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. A sort by position is ignored while this is set, as positions are scoped to a single view.
+         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. Their position in this view is stored separately from the one in their own project's views.
          */
         include_subprojects?: boolean;
         /**
@@ -9722,7 +9722,7 @@ export type TasksListData = {
          */
         filter_include_nulls?: boolean;
         /**
-         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. A sort by position is ignored while this is set, as positions are scoped to a single view.
+         * If true, also returns tasks from all descendant subprojects the user can access. Ignored outside a concrete project, in kanban views and for link shares. Their position in this view is stored separately from the one in their own project's views.
          */
         include_subprojects?: boolean;
         /**
