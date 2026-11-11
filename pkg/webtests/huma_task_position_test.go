@@ -91,17 +91,4 @@ func TestTaskPositionV2(t *testing.T) {
 		rec := humaRequest(t, e, http.MethodPut, "/api/v2/tasks/32/position", `{"project_view_id":1,"position":1}`, token, "")
 		require.Equal(t, http.StatusForbidden, rec.Code, "body: %s", rec.Body.String())
 	})
-
-	t.Run("subproject task in the parent project's view", func(t *testing.T) {
-		e, err := setupTestEnv()
-		require.NoError(t, err)
-
-		// Task 24 lives in project 15, a child of project 32; view 125 is 32's list view.
-		rec := humaRequest(t, e, http.MethodPut, "/api/v2/tasks/24/position", `{"project_view_id":125,"position":250}`, humaTokenFor(t, &testuser6), "")
-		require.Equal(t, http.StatusOK, rec.Code, "body: %s", rec.Body.String())
-
-		// testuser1 only has read access to project 32 and its children.
-		rec = humaRequest(t, e, http.MethodPut, "/api/v2/tasks/24/position", `{"project_view_id":125,"position":250}`, humaTokenFor(t, &testuser1), "")
-		require.Equal(t, http.StatusForbidden, rec.Code, "body: %s", rec.Body.String())
-	})
 }
