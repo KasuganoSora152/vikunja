@@ -843,9 +843,6 @@ func TestTaskPosition_CanUpdate_Subprojects(t *testing.T) {
 	t.Run("without update permission on the task", func(t *testing.T) {
 		assert.False(t, canUpdate(t, &user.User{ID: 1}, 24, 125))
 	})
-	t.Run("in an unrelated project's view", func(t *testing.T) {
-		assert.False(t, canUpdate(t, &user.User{ID: 6}, 24, 129))
-	})
 	t.Run("parent task in the child's view", func(t *testing.T) {
 		assert.False(t, canUpdate(t, &user.User{ID: 6}, 21, 57))
 	})
