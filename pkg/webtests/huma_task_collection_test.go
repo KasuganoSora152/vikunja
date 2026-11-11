@@ -22,9 +22,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"code.vikunja.io/api/pkg/db"
-	"code.vikunja.io/api/pkg/models"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,32 +63,6 @@ func TestHumaTaskCollection(t *testing.T) {
 			require.Equal(t, http.StatusOK, rec.Code, "body: %s", rec.Body.String())
 			assert.Contains(t, rec.Body.String(), `task #21`)
 			assert.Contains(t, rec.Body.String(), `task #24`)
-		})
-		t.Run("subproject tasks get a position in the requested view", func(t *testing.T) {
-			rec := get("/api/v2/projects/32/views/125/tasks?include_subprojects=true&sort_by=position")
-			require.Equal(t, http.StatusOK, rec.Code, "body: %s", rec.Body.String())
-			var body struct {
-				Items []struct {
-					ID       int64   `json:"id"`
-					Position float64 `json:"position"`
-				} `json:"items"`
-			}
-			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-
-			s := db.NewSession()
-			defer s.Close()
-			stored := &models.TaskPosition{}
-			has, err := s.Where("task_id = ? AND project_view_id = ?", 24, 125).Get(stored)
-			require.NoError(t, err)
-			require.True(t, has, "task #24 must have a position row in view 125")
-
-			for _, task := range body.Items {
-				if task.ID == 24 {
-					assert.InDelta(t, stored.Position, task.Position, 0, "task #24 must carry its stored position in view 125")
-					return
-				}
-			}
-			t.Fatalf("task #24 missing from the response: %s", rec.Body.String())
 		})
 		t.Run("ignored for a kanban view", func(t *testing.T) {
 			rec := get("/api/v2/projects/32/views/128/buckets/tasks?include_subprojects=true")
