@@ -7,6 +7,7 @@ import {TaskBucketFactory} from '../../factories/task_buckets'
 import {SavedFilterFactory} from '../../factories/saved_filter'
 import {UserFactory} from '../../factories/user'
 import {UserProjectFactory} from '../../factories/users_project'
+import {Factory} from '../../support/factory'
 
 async function createProjectsWithTasks() {
 	// Create two projects
@@ -108,6 +109,43 @@ test.describe('Drag Task to Project in Sidebar', () => {
 			await expect(page.locator('.tasks')).toContainText(task.title)
 			await page.reload()
 			await expect(page.locator('.tasks')).toContainText(task.title)
+		})
+
+		test('Reorders a subproject task between the parent\'s tasks', async ({authenticatedPage: page, apiContext, userToken}) => {
+			const headers = {Authorization: `Bearer ${userToken}`}
+			const {parent, parentList, task} = await createParentWithSubproject()
+			await TaskFactory.create(2, {
+				id: i => i + 1,
+				title: i => `Parent task ${i}`,
+				project_id: parent.id,
+			}, false)
+			await Factory.seed('task_positions', [
+				{task_id: 2, project_view_id: parentList.id, position: 100},
+				{task_id: 3, project_view_id: parentList.id, position: 200},
+				{task_id: task.id, project_view_id: 2, position: 1000},
+			])
+
+			await page.goto(`/projects/${parent.id}/${parentList.id}?include_subprojects=true`)
+
+			const rows = page.locator('.tasks .single-task')
+			await expect(rows).toHaveText([/Task in the subproject/, /Parent task 1/, /Parent task 2/])
+
+			const positionSaved = page.waitForResponse(r => r.url().includes(`/tasks/${task.id}/position`) && r.ok())
+			await rows.filter({hasText: task.title}).dragTo(rows.filter({hasText: 'Parent task 1'}))
+			await positionSaved
+
+			await page.reload()
+			await expect(rows).toHaveText([/Parent task 1/, /Task in the subproject/, /Parent task 2/])
+
+			const parentView = await apiContext.get(`/api/v2/projects/${parent.id}/views/${parentList.id}/tasks?include_subprojects=true`, {headers})
+			expect(parentView.ok()).toBeTruthy()
+			const positionInParent = (await parentView.json()).items.find(t => t.id === task.id).position
+			expect(positionInParent).toBeGreaterThan(100)
+			expect(positionInParent).toBeLessThan(200)
+
+			const ownView = await apiContext.get('/api/v2/projects/2/views/2/tasks', {headers})
+			expect(ownView.ok()).toBeTruthy()
+			expect((await ownView.json()).items.find(t => t.id === task.id).position).toBe(1000)
 		})
 	})
 
